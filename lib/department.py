@@ -2,6 +2,7 @@ from __init__ import CURSOR, CONN
 
 
 class Department:
+    all = {}
 
     def __init__(self, name, location, id=None):
         self.id = id
@@ -47,6 +48,23 @@ class Department:
         self.id = CURSOR.lastrowid
 
     @classmethod
+    def instance_from_db(cls, row):
+        """Return a Department object having the attribute values from the table row."""
+
+        # Check the dictionary for an existing instance using the row's primary key
+        department = cls.all.get(row[0])
+        if department:
+            # ensure attributes match row values in case local object was modified
+            department.name = row[1]
+            department.location = row[2]
+        else:
+            # not in dictionary, create new instance and add to dictionary
+            department = cls(row[1], row[2])
+            department.id = row[0]
+            cls.all[department.id] = department
+        return department
+
+    @classmethod
     def create(cls, name, location):
         """ Initialize a new Department instance and save the object to the database """
         department = cls(name, location)
@@ -69,6 +87,21 @@ class Department:
             DELETE FROM departments
             WHERE id = ?
         """
+
+    def save(self):
+        """ Insert a new row with the name and location values of the current Department instance.
+        Update object id attribute using the primary key value of new row.
+        Save the object in local dictionary using table row's PK as dictionary key"""
+        sql = """
+            INSERT INTO departments (name, location)
+            VALUES (?, ?)
+        """
+
+        CURSOR.execute(sql, (self.name, self.location))
+        CONN.commit()
+
+        self.id = CURSOR.lastrowid
+        type(self).all[self.id] = self
 
         CURSOR.execute(sql, (self.id,))
         CONN.commit()
